@@ -13,7 +13,9 @@ namespace AtlasToolEditor
         public Image Image { get; set; }
         // Position and size in "base" (world) coordinates
         public RectangleF Bounds { get; set; }
+        public int Z { get; set; } = 0;
     }
+
 
     // Custom canvas for drawing and interacting with textures.
     public class TextureCanvas : Panel
@@ -47,28 +49,61 @@ namespace AtlasToolEditor
             this.MouseMove += TextureCanvas_MouseMove;
             this.MouseUp += TextureCanvas_MouseUp;
             this.MouseWheel += TextureCanvas_MouseWheel;
+            this.MouseDoubleClick += TextureCanvas_MouseDoubleClick;
         }
+
+        private void TextureCanvas_MouseDoubleClick(object sender, MouseEventArgs e)
+        {
+            PointF basePt = new PointF((e.X - PanOffset.X) / ZoomFactor, (e.Y - PanOffset.Y) / ZoomFactor);
+            foreach (var item in Items)
+            {
+                if (item.Bounds.Contains(basePt))
+                {
+                    string input = PromptForZValue(item.Z);
+                    if (int.TryParse(input, out int newZ))
+                    {
+                        item.Z = newZ;
+                        Invalidate();
+                    }
+                    break;
+                }
+            }
+        }
+
+        private string PromptForZValue(int currentZ)
+        {
+            using (var form = new Form())
+            {
+                form.Text = "Set Z Height";
+                var label = new Label() { Text = "Enter Z height:", Left = 10, Top = 10, AutoSize = true };
+                var textBox = new TextBox() { Left = 10, Top = 30, Width = 200, Text = currentZ.ToString() };
+                var buttonOk = new Button() { Text = "OK", Left = 10, Width = 60, Top = 60, DialogResult = DialogResult.OK };
+                form.AcceptButton = buttonOk;
+
+                form.Controls.Add(label);
+                form.Controls.Add(textBox);
+                form.Controls.Add(buttonOk);
+
+                form.StartPosition = FormStartPosition.CenterParent;
+                form.ClientSize = new Size(220, 100);
+                return form.ShowDialog() == DialogResult.OK ? textBox.Text : currentZ.ToString();
+            }
+        }
+
 
         private void TextureCanvas_MouseDown(object sender, MouseEventArgs e)
         {
             lastMousePos = e.Location;
             if (e.Button == MouseButtons.Left)
             {
-                // Transformation of the point from view to world coordinates:
                 PointF basePt = new PointF((e.X - PanOffset.X) / ZoomFactor, (e.Y - PanOffset.Y) / ZoomFactor);
-                // We are looking for an element (from the end – on top)
-                for (int i = Items.Count - 1; i >= 0; i--)
+
+                selectedItem = Items.OrderByDescending(item => item.Z)
+                                    .FirstOrDefault(item => item.Bounds.Contains(basePt));
+
+                if (selectedItem != null)
                 {
-                    if (Items[i].Bounds.Contains(basePt))
-                    {
-                        selectedItem = Items[i];
-                        isDraggingItem = true;
-                        // Move to the top:
-                        Items.RemoveAt(i);
-                        Items.Add(selectedItem);
-                        Invalidate();
-                        break;
-                    }
+                    isDraggingItem = true;
                 }
             }
             else if (e.Button == MouseButtons.Right)
@@ -151,21 +186,24 @@ namespace AtlasToolEditor
                 }
             }
 
-            foreach (var item in Items)
+            var sortedItems = Items.OrderBy(item => item.Z).ToList();
+
+            foreach (var item in sortedItems)
             {
                 e.Graphics.DrawImage(item.Image, item.Bounds);
                 using (var font = new Font("Arial", 10, FontStyle.Bold))
                 using (var brush = new SolidBrush(Color.Black))
                 {
-                    SizeF textSize = e.Graphics.MeasureString(item.Name, font);
+                    string text = $"{item.Name} (Z: {item.Z})";
+                    SizeF textSize = e.Graphics.MeasureString(text, font);
                     PointF textPos = new PointF(
                         item.Bounds.X + (item.Bounds.Width - textSize.Width) / 2,
                         item.Bounds.Y + (item.Bounds.Height - textSize.Height) / 2
                     );
-                    e.Graphics.DrawString(item.Name, font, brush, textPos);
+                    e.Graphics.DrawString(text, font, brush, textPos);
                 }
             }
-            // We draw a red frame corresponding to the arrangement area
+
             using (Pen pen = new Pen(Color.Red, 2 / ZoomFactor))
             {
                 e.Graphics.DrawRectangle(pen, arrangementArea.X, arrangementArea.Y, arrangementArea.Width, arrangementArea.Height);

@@ -15,6 +15,7 @@ namespace AtlasToolEditor
         public int ScreenY { get; set; }
         public int Width { get; set; }
         public int Height { get; set; }
+        public int Z { get; set; }
     }
 
     public class ArrangementForm : Form
@@ -114,7 +115,6 @@ namespace AtlasToolEditor
             }
         }
 
-        // Saving the layout - saving world coordinates
         private void BtnSaveArrangement_Click(object sender, EventArgs e)
         {
             List<ArrangedRegion> arranged = new List<ArrangedRegion>();
@@ -126,7 +126,8 @@ namespace AtlasToolEditor
                     ScreenX = (int)item.Bounds.X,
                     ScreenY = (int)item.Bounds.Y,
                     Width = (int)item.Bounds.Width,
-                    Height = (int)item.Bounds.Height
+                    Height = (int)item.Bounds.Height,
+                    Z = item.Z
                 });
             }
 
@@ -152,6 +153,7 @@ namespace AtlasToolEditor
             }
         }
 
+
         // Loading a previously saved layout
         private void BtnLoadArrangement_Click(object sender, EventArgs e)
         {
@@ -164,16 +166,16 @@ namespace AtlasToolEditor
                 var arranged = JsonSerializer.Deserialize<List<ArrangedRegion>>(json);
                 if (arranged != null)
                 {
-                    // Reset transformations to default values
                     textureCanvas.ZoomFactor = 1.0f;
                     textureCanvas.PanOffset = new PointF(0, 0);
-                    // For each saved region, we update the position on the canvas (searching by name)
+
                     foreach (var arr in arranged)
                     {
                         var item = textureCanvas.Items.Find(x => x.Name == arr.Name);
                         if (item != null)
                         {
                             item.Bounds = new RectangleF(arr.ScreenX, arr.ScreenY, arr.Width, arr.Height);
+                            item.Z = arr.Z; // Wczytanie wartości Z
                         }
                     }
                     textureCanvas.Invalidate();
@@ -184,5 +186,6 @@ namespace AtlasToolEditor
                 MessageBox.Show("Error loading arrangement: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+
     }
 }
