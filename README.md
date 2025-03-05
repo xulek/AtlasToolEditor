@@ -9,6 +9,9 @@ A Windows Forms application (targeting .NET 9.0) for creating and arranging text
   - A name
   - X, Y coordinates in the image
   - Width and height
+- **Modify Regions:**
+  - **Delete a Region**: Press **DELETE** to remove the currently selected region.
+  - **Rename a Region**: Double-click on a region to edit its name.
 - **Save to JSON**: Export all defined regions to a JSON file for later use or sharing.
 - **Load Regions from JSON**: Reload previously defined regions onto the same or compatible image.
 - **Arrange Regions**: A separate form (`ArrangementForm`) allows you to:
@@ -49,18 +52,22 @@ A Windows Forms application (targeting .NET 9.0) for creating and arranging text
    - Enter a name for the region.  
    - Move or resize existing regions by dragging their edges or corners.  
 
-3. **Saving/Loading Regions**  
+3. **Editing & Deleting Regions**  
+   - **Rename a region**: Double-click on a region to change its name.  
+   - **Delete a region**: Select a region and press **DELETE** to remove it.  
+
+4. **Saving/Loading Regions**  
    - Click **Save JSON** to export your defined regions to a JSON file.  
    - Click **Load JSON** to import previously saved regions.  
 
-4. **Clearing Regions**  
+5. **Clearing Regions**  
    - Click **Clear** to remove all defined regions from the current session.  
 
-5. **Zooming & Panning**  
+6. **Zooming & Panning**  
    - Use **Zoom +** and **Zoom -** buttons to zoom in or out.  
    - Right-click and drag on the image to pan around when zoomed in.  
 
-6. **Arranging Regions**  
+7. **Arranging Regions**  
    - Once you have your image and JSON file of defined regions, click **Arrange**.  
    - In the **Arrangement Form**, you'll be asked to select the JSON file of regions.
    - The tool will crop each defined region from the loaded image.  
