@@ -7,7 +7,7 @@ using System.Windows.Forms;
 
 namespace AtlasToolEditor
 {
-    // Model of the saved region arrangement
+    // Model of saved region arrangement
     public class ArrangedRegion
     {
         public string Name { get; set; }
@@ -19,39 +19,40 @@ namespace AtlasToolEditor
 
     public class ArrangementForm : Form
     {
-        private Panel viewportPanel;          // Viewport area 1280x720
-        private TextureCanvas textureCanvas;  // Our canvas with zoom/pan and texture drawing
+        private Panel viewportPanel;          // View area with dimensions 1280x720
+        private TextureCanvas textureCanvas;  // Canvas with zoom/pan and texture drawing support
         private Button btnSaveArrangement;
+        private Button btnLoadArrangement;    // New button to load arrangement
         private Image fullImage;
 
-        // Constructor taking the full image from MainForm
+        // Constructor accepting the full image from MainForm
         public ArrangementForm(Image fullImage)
         {
             this.fullImage = fullImage;
             this.Text = "Arrangement Form";
-            // Form is larger so the viewport is centered and margins are visible
+            // Form settings - larger to center the view
             this.ClientSize = new Size(1400, 800);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.BackColor = Color.DarkGray;
             this.FormBorderStyle = FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
 
-            // Create viewportPanel with a fixed size of 1280x720 – white background
+            // Creating viewportPanel with fixed dimensions 1280x720 - white background
             viewportPanel = new Panel();
             viewportPanel.Size = new Size(1280, 720);
             viewportPanel.Location = new Point((this.ClientSize.Width - viewportPanel.Width) / 2,
                                                (this.ClientSize.Height - viewportPanel.Height) / 2);
             viewportPanel.BackColor = Color.White;
-            // Optionally, you can set borderFixed, but the red border will be drawn by the canvas
             viewportPanel.BorderStyle = BorderStyle.None;
             this.Controls.Add(viewportPanel);
 
-            // Create TextureCanvas that will fill the viewportPanel
+            // We create ONE instance of TextureCanvas, set Dock and enable grid
             textureCanvas = new TextureCanvas();
             textureCanvas.Dock = DockStyle.Fill;
+            textureCanvas.ShowGrid = true;  // Enable grid
             viewportPanel.Controls.Add(textureCanvas);
 
-            // Save arrangement button – place it outside the viewportPanel
+            // Arrangement save button - placed outside viewportPanel
             btnSaveArrangement = new Button();
             btnSaveArrangement.Text = "Save Arrangement";
             btnSaveArrangement.Size = new Size(120, 30);
@@ -60,12 +61,21 @@ namespace AtlasToolEditor
             btnSaveArrangement.Click += BtnSaveArrangement_Click;
             this.Controls.Add(btnSaveArrangement);
 
+            // New button to load the layout - placed next to the save button
+            btnLoadArrangement = new Button();
+            btnLoadArrangement.Text = "Load Arrangement";
+            btnLoadArrangement.Size = new Size(120, 30);
+            btnLoadArrangement.Location = new Point(btnSaveArrangement.Left - btnLoadArrangement.Width - 10, 10);
+            btnLoadArrangement.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnLoadArrangement.Click += BtnLoadArrangement_Click;
+            this.Controls.Add(btnLoadArrangement);
+
             this.Load += ArrangementForm_Load;
         }
 
         private void ArrangementForm_Load(object sender, EventArgs e)
         {
-            // User selects a JSON file with regions
+            // The user selects a JSON file with regions (defined in MainForm)
             OpenFileDialog ofd = new OpenFileDialog();
             ofd.Filter = "JSON|*.json";
             if (ofd.ShowDialog() != DialogResult.OK)
@@ -85,9 +95,9 @@ namespace AtlasToolEditor
                         Rectangle cropRect = new Rectangle(region.X, region.Y, region.Width, region.Height);
                         if (cropRect.Right > fullImage.Width || cropRect.Bottom > fullImage.Height)
                             continue;
-                        // Cut out the image fragment
+                        // Cut out a fragment of the image
                         Bitmap croppedBitmap = new Bitmap(fullImage).Clone(cropRect, fullImage.PixelFormat);
-                        // Add a new TextureItem object to the canvas – base coordinates are the original region values (0,0,1280,720 world)
+                        // Add a new TextureItem object to the canvas - base coordinates are the original region values (0,0,1280,720)
                         textureCanvas.Items.Add(new TextureItem()
                         {
                             Name = region.Name,
@@ -104,26 +114,19 @@ namespace AtlasToolEditor
             }
         }
 
+        // Saving the layout - saving world coordinates
         private void BtnSaveArrangement_Click(object sender, EventArgs e)
         {
-            // Calculating the final positions and sizes of textures in screen coordinates
             List<ArrangedRegion> arranged = new List<ArrangedRegion>();
             foreach (var item in textureCanvas.Items)
             {
-                // Positions in viewportPanel: (world X * ZoomFactor + PanOffset)
-                RectangleF finalBounds = new RectangleF(
-                    item.Bounds.X * textureCanvas.ZoomFactor + textureCanvas.PanOffset.X,
-                    item.Bounds.Y * textureCanvas.ZoomFactor + textureCanvas.PanOffset.Y,
-                    item.Bounds.Width * textureCanvas.ZoomFactor,
-                    item.Bounds.Height * textureCanvas.ZoomFactor
-                );
                 arranged.Add(new ArrangedRegion()
                 {
                     Name = item.Name,
-                    ScreenX = (int)finalBounds.X,
-                    ScreenY = (int)finalBounds.Y,
-                    Width = (int)finalBounds.Width,
-                    Height = (int)finalBounds.Height
+                    ScreenX = (int)item.Bounds.X,
+                    ScreenY = (int)item.Bounds.Y,
+                    Width = (int)item.Bounds.Width,
+                    Height = (int)item.Bounds.Height
                 });
             }
 
@@ -132,11 +135,10 @@ namespace AtlasToolEditor
                 var options = new JsonSerializerOptions { WriteIndented = true };
                 string json = JsonSerializer.Serialize(arranged, options);
 
-                // Use SaveFileDialog to choose the save path
                 using (SaveFileDialog sfd = new SaveFileDialog())
                 {
                     sfd.Filter = "JSON|*.json";
-                    sfd.FileName = "arranged_layout.json"; // default name, which the user can change
+                    sfd.FileName = "arranged_layout.json";
                     if (sfd.ShowDialog() == DialogResult.OK)
                     {
                         File.WriteAllText(sfd.FileName, json);
@@ -150,5 +152,37 @@ namespace AtlasToolEditor
             }
         }
 
+        // Loading a previously saved layout
+        private void BtnLoadArrangement_Click(object sender, EventArgs e)
+        {
+            OpenFileDialog ofd = new OpenFileDialog();
+            ofd.Filter = "JSON|*.json";
+            if (ofd.ShowDialog() != DialogResult.OK) return;
+            try
+            {
+                string json = File.ReadAllText(ofd.FileName);
+                var arranged = JsonSerializer.Deserialize<List<ArrangedRegion>>(json);
+                if (arranged != null)
+                {
+                    // Reset transformations to default values
+                    textureCanvas.ZoomFactor = 1.0f;
+                    textureCanvas.PanOffset = new PointF(0, 0);
+                    // For each saved region, we update the position on the canvas (searching by name)
+                    foreach (var arr in arranged)
+                    {
+                        var item = textureCanvas.Items.Find(x => x.Name == arr.Name);
+                        if (item != null)
+                        {
+                            item.Bounds = new RectangleF(arr.ScreenX, arr.ScreenY, arr.Width, arr.Height);
+                        }
+                    }
+                    textureCanvas.Invalidate();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error loading arrangement: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
     }
 }

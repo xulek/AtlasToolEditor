@@ -54,6 +54,10 @@ namespace AtlasToolEditor
         {
             InitializeComponent();
 
+            // We set KeyPreview so that the form receives keyboard events
+            this.KeyPreview = true;
+            this.KeyDown += MainForm_KeyDown;
+
             _regions = new List<RegionDefinition>();
 
             pictureBox1.SizeMode = PictureBoxSizeMode.Normal;
@@ -64,6 +68,8 @@ namespace AtlasToolEditor
             pictureBox1.MouseMove += PictureBox1_MouseMove;
             pictureBox1.MouseUp += PictureBox1_MouseUp;
             pictureBox1.Paint += PictureBox1_Paint;
+            pictureBox1.MouseDoubleClick += PictureBox1_MouseDoubleClick; // Nowe zdarzenie – edycja nazwy
+                                                                          // New event - name editing
 
             // Buttons
             buttonLoad.Click += ButtonLoad_Click;
@@ -438,6 +444,47 @@ namespace AtlasToolEditor
             else if (_isMovingOrResizing)
             {
                 _isMovingOrResizing = false;
+            }
+        }
+
+        // New method - double click handling to edit region name
+        private void PictureBox1_MouseDoubleClick(object sender, MouseEventArgs e)
+        {
+            if (_loadedImage == null) return;
+
+            Point imagePoint = ScreenToImage(e.Location);
+            // We are looking for the region in which it was clicked
+            RegionDefinition clickedRegion = null;
+            for (int i = _regions.Count - 1; i >= 0; i--)
+            {
+                if (_regions[i].ContainsPoint(imagePoint.X, imagePoint.Y))
+                {
+                    clickedRegion = _regions[i];
+                    break;
+                }
+            }
+
+            if (clickedRegion != null)
+            {
+                _selectedRegion = clickedRegion;
+                string newName = PromptForName();
+                if (!string.IsNullOrEmpty(newName))
+                {
+                    clickedRegion.Name = newName;
+                    pictureBox1.Invalidate();
+                }
+            }
+        }
+
+        // DEL key handling - deleting the selected region
+        private void MainForm_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Delete && _selectedRegion != null)
+            {
+                _regions.Remove(_selectedRegion);
+                _selectedRegion = null;
+                pictureBox1.Invalidate();
+                e.Handled = true;
             }
         }
 

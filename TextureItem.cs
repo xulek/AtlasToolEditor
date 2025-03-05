@@ -33,10 +33,14 @@ namespace AtlasToolEditor
         private bool isDraggingItem = false;
         private bool isPanning = false;
 
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+
+        public bool ShowGrid { get; set; } = false;
+
         public TextureCanvas()
         {
             this.DoubleBuffered = true;
-            this.BackColor = Color.Transparent;
+            this.BackColor = Color.White;
             this.SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer, true);
 
             this.MouseDown += TextureCanvas_MouseDown;
@@ -130,7 +134,23 @@ namespace AtlasToolEditor
             // Setting the transformation: first the offset, then the scaling
             e.Graphics.TranslateTransform(PanOffset.X, PanOffset.Y);
             e.Graphics.ScaleTransform(ZoomFactor, ZoomFactor);
-            // We draw all the textures
+
+            if (ShowGrid)
+            {
+                int gridSpacing = 50;
+                using (Pen gridPen = new Pen(Color.LightGray, 1 / ZoomFactor))
+                {
+                    for (float x = arrangementArea.X; x <= arrangementArea.Right; x += gridSpacing)
+                    {
+                        e.Graphics.DrawLine(gridPen, x, arrangementArea.Y, x, arrangementArea.Bottom);
+                    }
+                    for (float y = arrangementArea.Y; y <= arrangementArea.Bottom; y += gridSpacing)
+                    {
+                        e.Graphics.DrawLine(gridPen, arrangementArea.X, y, arrangementArea.Right, y);
+                    }
+                }
+            }
+
             foreach (var item in Items)
             {
                 e.Graphics.DrawImage(item.Image, item.Bounds);
